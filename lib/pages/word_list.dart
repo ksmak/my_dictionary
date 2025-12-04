@@ -12,8 +12,16 @@ class WordList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        iconTheme: IconThemeData(
+          color: Colors.white, // Change to your desired color
+        ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('Word List'),
+        title: Text(
+          'Dictionary',
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge!.copyWith(color: Colors.white),
+        ),
       ),
       body: FutureBuilder(
         future: DBHelper.instance.getAllWords(),
@@ -41,9 +49,12 @@ class WordList extends StatelessWidget {
                     return ListTile(
                       leading: Icon(Icons.wordpress),
                       title: Text(item.name),
-                      onLongPress: () {
-                        wordModel.setIndex(index);
-                      },
+                      trailing:
+                          wordModel.words[index].translations
+                              .where((e) => e.level == 0)
+                              .isNotEmpty
+                          ? Image.asset("assets/images/new.png")
+                          : null,
                       onTap: () {
                         Navigator.push(
                           context,
@@ -53,7 +64,6 @@ class WordList extends StatelessWidget {
                         );
                       },
                       selected: index == wordModel.index,
-                      selectedTileColor: Colors.deepOrange[50],
                     );
                   },
                 );
@@ -73,7 +83,7 @@ class WordList extends StatelessWidget {
             ),
           );
         },
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

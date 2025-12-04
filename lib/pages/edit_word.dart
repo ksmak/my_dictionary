@@ -1,6 +1,8 @@
 import 'package:my_dictionary/model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import 'package:collection/collection.dart';
 import '../data.dart';
 import '../dbhelper.dart';
 
@@ -19,6 +21,7 @@ class _EditWordPageState extends State<EditWordPage> {
   List<TextEditingController> _translationControllers = [];
   int _formState = 0; // 0 - view, 1 - edit
   String _createdAt = '';
+  Word? _currentWord;
 
   @override
   void initState() {
@@ -26,17 +29,16 @@ class _EditWordPageState extends State<EditWordPage> {
     if (widget.id != null) {
       DBHelper.instance.getWordById(widget.id!).then((word) {
         if (word != null) {
+          _currentWord = word;
           _wordController.text = word.name;
           if (_formState == 0) {
             setState(() {
               _translationControllers = word.translations
                   .map(
-                    (translation) => TextEditingController(
-                      text: '${translation.name} (${translation.level})',
-                    ),
+                    (translation) =>
+                        TextEditingController(text: translation.name),
                   )
                   .toList();
-              _createdAt = 'created: ${word.createdAt}';
             });
           } else {
             setState(() {
@@ -46,9 +48,10 @@ class _EditWordPageState extends State<EditWordPage> {
                         TextEditingController(text: translation.name),
                   )
                   .toList();
-              _createdAt = 'created: ${word.createdAt}';
             });
           }
+          _createdAt =
+              'created: ${DateFormat.yMMMMd().add_jms().format(DateTime.parse(word.createdAt))}';
         }
       });
     }
@@ -69,6 +72,12 @@ class _EditWordPageState extends State<EditWordPage> {
   void addTranslationField() {
     setState(() {
       _translationControllers.add(TextEditingController());
+    });
+  }
+
+  void deleteTranslationField(int index) {
+    setState(() {
+      _translationControllers.removeAt(index);
     });
   }
 
@@ -119,12 +128,24 @@ class _EditWordPageState extends State<EditWordPage> {
         name: _wordController.text,
         image: '',
         translations: _translationControllers
-            .map(
-              (controller) => Translation(
+            .mapIndexed(
+              (ind, controller) => Translation(
                 id: 0,
                 wordId: widget.id!,
                 name: controller.text,
-                level: 0,
+                level: existWord != null
+                    ? existWord.translations
+                          .firstWhere(
+                            (t) => t.name == controller.text,
+                            orElse: () => Translation(
+                              id: 0,
+                              wordId: 0,
+                              name: '',
+                              level: 0,
+                            ),
+                          )
+                          .level
+                    : 0,
               ),
             )
             .toList(),
@@ -171,8 +192,16 @@ class _EditWordPageState extends State<EditWordPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        iconTheme: IconThemeData(
+          color: Colors.white, // Change to your desired color
+        ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('Editor Page'),
+        title: Text(
+          '',
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge!.copyWith(color: Colors.white),
+        ),
         actions: _formState == 0
             ? [
                 IconButton(
@@ -188,68 +217,99 @@ class _EditWordPageState extends State<EditWordPage> {
                   },
                 ),
               ]
-            : [IconButton(icon: const Icon(Icons.check), onPressed: saveWord)],
+            : [
+                IconButton(
+                  icon: const Icon(Icons.cancel),
+                  onPressed: () {
+                    setState(() {
+                      _formState = 0;
+                    });
+                  },
+                ),
+                IconButton(icon: const Icon(Icons.check), onPressed: saveWord),
+              ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: _formState == 0
-              ? [
-                  Text(
-                    _wordController.text,
-                    style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 10),
-                  Column(
-                    children: _translationControllers
-                        .map(
-                          (controller) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4.0),
-                            child: Text(
-                              controller.text,
-                              style: TextStyle(fontSize: 18),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: _formState == 0
+                ? [
+                    Text(
+                      _wordController.text,
+                      style: TextStyle(
+                        fontSize: 25,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: _translationControllers
+                          .mapIndexed(
+                            (ind, controller) => Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 4.0,
+                              ),
+                              child: Text(
+                                ' - ${controller.text} (${_currentWord?.translations[ind].level})',
+                                style: TextStyle(fontSize: 18),
+                              ),
                             ),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                  SizedBox(height: 10),
-                  Text(_createdAt),
-                ]
-              : [
-                  TextField(
-                    controller: _wordController,
-                    decoration: const InputDecoration(labelText: 'Word'),
-                    style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: addTranslationField,
-                    child: const Text('Add Translation'),
-                  ),
-                  SizedBox(height: 16),
-                  _translationControllers.isEmpty
-                      ? Container()
-                      : Column(
-                          children: _translationControllers
-                              .map(
-                                (controller) => Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 8.0,
+                          )
+                          .toList(),
+                    ),
+                    SizedBox(height: 20),
+                    Text(_createdAt, style: TextStyle(fontSize: 14)),
+                  ]
+                : [
+                    TextField(
+                      controller: _wordController,
+                      decoration: const InputDecoration(labelText: 'Word'),
+                      style: TextStyle(
+                        fontSize: 25,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: addTranslationField,
+                      child: const Text('Add Translation'),
+                    ),
+                    SizedBox(height: 16),
+                    _translationControllers.isEmpty
+                        ? Container()
+                        : Column(
+                            children: _translationControllers
+                                .mapIndexed(
+                                  (ind, controller) => Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 8.0,
+                                        ),
+                                        child: TextField(
+                                          controller: controller,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Translation',
+                                          ),
+                                          style: TextStyle(fontSize: 18),
+                                        ),
+                                      ),
+                                      ElevatedButton(
+                                        child: const Text('Delete'),
+                                        onPressed: () =>
+                                            deleteTranslationField(ind),
+                                      ),
+                                    ],
                                   ),
-                                  child: TextField(
-                                    controller: controller,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Translation',
-                                    ),
-                                    style: TextStyle(fontSize: 18),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                        ), // Other UI elements can be added here
-                ],
+                                )
+                                .toList(),
+                          ), // Other UI elements can be added here
+                  ],
+          ),
         ),
       ),
     );

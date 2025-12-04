@@ -66,11 +66,19 @@ class _CheckPageState extends State<CheckPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        iconTheme: IconThemeData(
+          color: Colors.white, // Change to your desired color
+        ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text('Check'),
+        title: Text(
+          '',
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge!.copyWith(color: Colors.white),
+        ),
         actions: [
           IconButton(
-            icon: Icon(Icons.stacked_bar_chart),
+            icon: Icon(Icons.stacked_line_chart),
             onPressed: goToStatistics,
           ),
         ],
@@ -101,56 +109,6 @@ class _CheckPageState extends State<CheckPage> {
                           mainAxisAlignment: MainAxisAlignment.start,
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                IconButton(
-                                  onPressed: () {
-                                    Provider.of<WordModel>(
-                                      context,
-                                      listen: false,
-                                    ).setIndex(
-                                      wordModel.index - 1 < 0
-                                          ? 0
-                                          : wordModel.index - 1,
-                                    );
-                                    Provider.of<WordModel>(
-                                      context,
-                                      listen: false,
-                                    ).setMessage('');
-                                    _translationController.text = '';
-                                  },
-                                  icon: const Icon(
-                                    Icons.arrow_back_ios,
-                                    size: 32,
-                                    color: Color.fromRGBO(255, 87, 34, 1),
-                                  ),
-                                ),
-                                IconButton(
-                                  onPressed: () {
-                                    Provider.of<WordModel>(
-                                      context,
-                                      listen: false,
-                                    ).setIndex(
-                                      wordModel.index + 1 >
-                                              wordModel.words.length - 1
-                                          ? wordModel.words.length - 1
-                                          : wordModel.index + 1,
-                                    );
-                                    Provider.of<WordModel>(
-                                      context,
-                                      listen: false,
-                                    ).setMessage('');
-                                    _translationController.text = '';
-                                  },
-                                  icon: const Icon(
-                                    Icons.arrow_forward_ios,
-                                    size: 32,
-                                    color: Color.fromRGBO(255, 87, 34, 1),
-                                  ),
-                                ),
-                              ],
-                            ),
                             Text(
                               wordModel.words[wordModel.index].name,
                               style: const TextStyle(
@@ -158,16 +116,21 @@ class _CheckPageState extends State<CheckPage> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
+                            SizedBox(height: 16),
                             TextField(
                               controller: _translationController,
                               decoration: const InputDecoration(
                                 helper: Center(
-                                  child: Text('Enter translation'),
+                                  child: Text(
+                                    'Enter translation',
+                                    style: TextStyle(fontSize: 10),
+                                  ),
                                 ),
                                 alignLabelWithHint: true,
                               ),
                               textAlign: TextAlign.center,
                               autofocus: true,
+                              style: TextStyle(fontSize: 24),
                               onSubmitted: (value) => checkTranslation(
                                 wordModel.words[wordModel.index],
                                 _translationController.text,
