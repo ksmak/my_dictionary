@@ -1,291 +1,473 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:flutter/foundation.dart';
-import 'data.dart';
+import 'data/category.dart';
+import 'data/word.dart';
 
+/// Класс для работы с базой данных SQLite.
+///
+/// Реализует singleton паттерн для единого подключения к БД.
+/// Отвечает за все CRUD операции со словами и переводами.
+///
+/// Структура БД:
+/// - categories: таблица категорий (id, name, created_at)
+/// - words: таблица слов (id, name, translation, name_level, translation_level,
+///          update_at_name_level, update_at_translation_level, created_at)
 class DBHelper {
   static final DBHelper instance = DBHelper._instance();
   static Database? _db;
-  // A flag to control database recreation in debug mode
-  static final bool _shouldRecreateDbInDebug = true;
+  static const bool _shouldRecreateDbInDebug = true;
+  static const int _databaseVersion = 1;
 
   DBHelper._instance();
 
-  Future<Database> get db async {
-    _db ??= await initDb();
-    return _db!;
-  }
+  Future<Database> get db async => _db ??= await _initDb();
 
-  Future<Database> initDb() async {
+  /// Инициализация базы данных
+  Future<Database> _initDb() async {
     String databasesPath = await getDatabasesPath();
-    String path = join(databasesPath, 'words.db');
+    String path = join(databasesPath, 'mydict.db');
 
-    // Check if in debug mode and if a flag is set to recreate
+    // В режиме отладки пересоздаем БД (удобно для разработки)
     if (kDebugMode && _shouldRecreateDbInDebug) {
-      await deleteDatabase(path);
+      try {
+        await deleteDatabase(path);
+      } catch (e) {
+        // Игнорируем ошибку если файла нет
+      }
     }
 
-    return await openDatabase(path, version: 1, onCreate: _onCreate);
+    return await openDatabase(
+      path,
+      version: _databaseVersion,
+      onCreate: _onCreate,
+    );
   }
 
-  Future _onCreate(Database db, int version) async {
+  /// Создание таблиц
+  Future<void> _onCreate(Database db, int version) async {
+    // Создаем таблицу категорий
     await db.execute('''
-        CREATE TABLE words(
+        CREATE TABLE categories(
           id INTEGER PRIMARY KEY AUTOINCREMENT, 
-          name TEXT NOT NULL, 
-          image TEXT,
+          name TEXT NOT NULL UNIQUE,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP          
         )
       ''');
+    // Создаем таблицу слов
     await db.execute('''
-        CREATE TABLE translations(
+        CREATE TABLE words(
           id INTEGER PRIMARY KEY AUTOINCREMENT, 
-          word_id INTEGER,
-          name TEXT NOT NULL,
-          level INTEGER DEFAULT 0,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (word_id) REFERENCES words (id) ON DELETE CASCADE
-        );
+          category_id INTEGER,
+          name TEXT NOT NULL UNIQUE,
+          translation TEXT NOT NULL,
+          name_level INTEGER DEFAULT 0,
+          translation_level INTEGER DEFAULT 0,
+          update_at_name_level DATETIME DEFAULT CURRENT_TIMESTAMP,
+          update_at_translation_level DATETIME DEFAULT CURRENT_TIMESTAMP,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP          
+        )
       ''');
+
+    // Создаем индекс для ускорения поиска слов по имени
     await db.execute('''
-        CREATE TRIGGER update_timestamp
-        AFTER UPDATE ON translations
-        FOR EACH ROW
-        BEGIN
-            UPDATE translations
-            SET updated_at = CURRENT_TIMESTAMP
-            WHERE id = OLD.id;
-        END;
-    ''');
+        CREATE INDEX idx_words_name 
+        ON words(name)
+      ''');
+
+    // Создаем индекс для ускорения поиска слов по переводу
+    await db.execute('''
+        CREATE INDEX idx_words_translation 
+        ON words(translation)
+      ''');
   }
 
-  Future<Word> insertWord(Word word) async {
-    Database db = await instance.db;
-    int wordId = await db.insert('words', {
-      'name': word.name,
-      'image': word.image,
+  /// Получение списка всех категорий из БД
+  Future<List<Category>> getAllCategories() async {
+    final db = await this.db;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'categories',
+      orderBy: 'name ASC',
+    );
+
+    return List.generate(maps.length, (i) {
+      return Category(
+        id: maps[i]['id'],
+        name: maps[i]['name'],
+        createdAt: maps[i]['created_at'],
+      );
     });
-    for (var translation in word.translations) {
-      await db.insert('translations', {
-        'word_id': wordId,
-        'name': translation.name,
-      });
-    }
-    return await getWordById(wordId) as Word;
   }
 
-  Future<Word?> getWordById(int id) async {
-    Database db = await instance.db;
-    List<Map<String, Object?>> maps = await db.query(
-      'words',
+  /// Вставляет новую категорию в БД
+  Future<Category> insertCategory(String name) async {
+    final db = await this.db;
+    final id = await db.insert('categories', {'name': name});
+    return await getCategoryById(id) as Category;
+  }
+
+  /// Обновляет категорию в БД
+  Future<Category> updateCategory(int id, String name) async {
+    final db = await this.db;
+    await db.update(
+      'categories',
+      {'name': name},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    return await getCategoryById(id) as Category;
+  }
+
+  /// Удаляет категорию из БД по ID
+  Future<void> deleteCategory(int id) async {
+    final db = await this.db;
+    await db.delete('words', where: 'category_id = ?', whereArgs: [id]);
+    await db.delete('categories', where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// Получает категорию по ID
+  Future<Category?> getCategoryById(int id) async {
+    final db = await this.db;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'categories',
       where: 'id = ?',
       whereArgs: [id],
     );
 
     if (maps.isNotEmpty) {
-      var wordMap = maps.first;
-      final List<Map<String, Object?>> translationMaps = await db.query(
-        'translations',
-        where: 'word_id = ?',
-        whereArgs: [wordMap['id']],
-      );
-      List<Translation> translations = translationMaps.map((translationMap) {
-        return Translation(
-          id: translationMap['id'] as int,
-          wordId: translationMap['word_id'] as int,
-          name: translationMap['name'] as String,
-          level: translationMap['level'] as int,
-          updateAt: translationMap['updated_at'] as String,
-        );
-      }).toList();
-
-      return Word(
-        id: wordMap['id'] as int,
-        name: wordMap['name'] as String,
-        image: wordMap['image'] as String,
-        translations: translations,
-        createdAt: wordMap['created_at'] as String,
+      return Category(
+        id: maps[0]['id'],
+        name: maps[0]['name'],
+        createdAt: maps[0]['created_at'],
       );
     }
     return null;
   }
 
-  Future<Word?> getWordByName(String name) async {
-    Database db = await instance.db;
-    List<Map<String, Object?>> maps = await db.query(
-      'words',
+  /// Получает категорию по наименованию
+  Future<Category?> getCategoryByName(String name) async {
+    final db = await this.db;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'categories',
       where: 'name = ?',
       whereArgs: [name],
     );
 
     if (maps.isNotEmpty) {
-      var wordMap = maps.first;
-      final List<Map<String, Object?>> translationMaps = await db.query(
-        'translations',
-        where: 'word_id = ?',
-        whereArgs: [wordMap['id']],
-      );
-      List<Translation> translations = translationMaps.map((translationMap) {
-        return Translation(
-          id: translationMap['id'] as int,
-          wordId: translationMap['word_id'] as int,
-          name: translationMap['name'] as String,
-          level: translationMap['level'] as int,
-          updateAt: translationMap['updated_at'] as String,
-        );
-      }).toList();
-
-      return Word(
-        id: wordMap['id'] as int,
-        name: wordMap['name'] as String,
-        image: wordMap['image'] as String,
-        translations: translations,
-        createdAt: wordMap['created_at'] as String,
+      return Category(
+        id: maps[0]['id'],
+        name: maps[0]['name'],
+        createdAt: maps[0]['created_at'],
       );
     }
     return null;
   }
 
-  Future<List<Word>> getAllWords() async {
-    Database db = await instance.db;
-    List<Word> words = [];
-    List<Map<String, Object?>> maps = await db.rawQuery('''
-      SELECT 
-        w.id, 
-        w.name, 
-        w.image, 
-        w.created_at, 
-        t.id AS t_id, 
-        t.name AS t_name, 
-        t.level AS t_level,
-        t.updated_at AS t_updated_at 
-      FROM words w
-      LEFT JOIN translations t ON w.id = t.word_id
-      ORDER BY w.name ASC
-    ''');
-
-    for (var map in maps) {
-      int wordId = map['id'] as int;
-      Word? existingWord = words.firstWhere(
-        (word) => word.id == wordId,
-        orElse: () => Word(
-          id: wordId,
-          name: map['name'] as String,
-          image: map['image'] as String,
-          translations: [],
-          createdAt: map['created_at'] as String,
-        ),
-      );
-
-      if (!words.contains(existingWord)) {
-        words.add(existingWord);
-      }
-
-      if (map['t_id'] != null) {
-        existingWord.translations.add(
-          Translation(
-            id: map['t_id'] as int,
-            wordId: wordId,
-            name: map['t_name'] as String,
-            level: map['t_level'] as int,
-            updateAt: map['t_updated_at'] as String,
-          ),
-        );
-      }
-    }
-
-    return words;
+  /// Вставляет новое слово в БД
+  Future<Word?> insertWord(Word word) async {
+    final db = await this.db;
+    final id = await db.insert('words', {
+      'category_id': word.category.id,
+      'name': word.name,
+      'translation': word.translation,
+      'name_level': word.nameLevel,
+      'translation_level': word.translationLevel,
+      'update_at_name_level': word.updateAtNameLevel,
+      'update_at_translation_level': word.updateAtTranslationLevel,
+      'created_at': word.createdAt,
+    });
+    return await getWordById(id);
   }
 
-  Future<void> updateWord(Word word) async {
-    Database db = await instance.db;
-    await db.update(
+  /// Обновляет данные слова в БД
+  Future<Word?> updateWord(Word word) async {
+    final db = await this.db;
+    final id = await db.update(
       'words',
-      {'name': word.name, 'image': word.image},
+      {
+        'category_id': word.category.id,
+        'name': word.name,
+        'translation': word.translation,
+        'name_level': word.nameLevel,
+        'translation_level': word.translationLevel,
+        'update_at_name_level': word.updateAtNameLevel,
+        'update_at_translation_level': word.updateAtTranslationLevel,
+        'created_at': word.createdAt,
+      },
       where: 'id = ?',
       whereArgs: [word.id],
     );
-    await updateTranslations(word.id, word.translations);
+    return await getWordById(id);
   }
 
-  Future<void> updateTranslationLevel(int id, int level) async {
-    Database db = await instance.db;
-    await db.update(
-      'translations',
-      {'level': level},
+  /// Удаляет слово из БД по ID
+  Future<int> deleteWord(int id) async {
+    final db = await this.db;
+    return await db.delete('words', where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// Получает списка слов из БД
+  Future<List<Word>> getAllWords(int categoryId) async {
+    final db = await this.db;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'words',
+      where: 'category_id = ?',
+      whereArgs: [categoryId],
+      orderBy: 'name ASC',
+    );
+
+    final category = await getCategoryById(categoryId);
+
+    return List.generate(maps.length, (i) {
+      return Word(
+        id: maps[i]['id'],
+        category: category!,
+        name: maps[i]['name'],
+        translation: maps[i]['translation'],
+        nameLevel: maps[i]['name_level'],
+        translationLevel: maps[i]['translation_level'],
+        updateAtNameLevel: maps[i]['update_at_name_level'],
+        updateAtTranslationLevel: maps[i]['update_at_translation_level'],
+        createdAt: maps[i]['created_at'],
+      );
+    });
+  }
+
+  /// Получает отфильтрованный список слов из БД
+  Future<List<Word>> getFilteredWords(int categoryId) async {
+    final db = await this.db;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'words',
+      where: '''
+        category_id = ? AND (
+          (name_level == 0 AND translation_level == 0) OR
+          (name_level == 1 AND update_at_name_level <= datetime('now', '-1 day')) OR
+          (translation_level == 1 AND update_at_translation_level <= datetime('now', '-1 day')) OR
+          (name_level == 2 AND update_at_name_level <= datetime('now', '-1 day')) OR
+          (translation_level == 2 AND update_at_translation_level <= datetime('now', '-1 day')) OR
+          (name_level == 3 AND update_at_name_level <= datetime('now', '-1 day')) OR
+          (translation_level == 3 AND update_at_translation_level <= datetime('now', '-1 day')) OR
+          (name_level == 4 AND update_at_name_level <= datetime('now', '-7 days')) OR
+          (translation_level == 4 AND update_at_translation_level <= datetime('now', '-7 days')) OR
+          (name_level == 5 AND update_at_name_level <= datetime('now', '-14 days')) OR
+          (translation_level == 5 AND update_at_translation_level <= datetime('now', '-14 days')) OR
+          (name_level == 6 AND update_at_name_level <= datetime('now', '-30 days')) OR
+          (translation_level == 6 AND update_at_translation_level <= datetime('now', '-30 days')) OR
+          (name_level == 7 AND update_at_name_level <= datetime('now', '-90 days')) OR
+          (translation_level == 7 AND update_at_translation_level <= datetime('now', '-90 days'))
+        )
+      ''',
+      whereArgs: [categoryId],
+      orderBy: 'name ASC',
+    );
+
+    final category = await getCategoryById(categoryId);
+
+    return List.generate(maps.length, (i) {
+      return Word(
+        id: maps[i]['id'],
+        category: category!,
+        name: maps[i]['name'],
+        translation: maps[i]['translation'],
+        nameLevel: maps[i]['name_level'],
+        translationLevel: maps[i]['translation_level'],
+        updateAtNameLevel: maps[i]['update_at_name_level'],
+        updateAtTranslationLevel: maps[i]['update_at_translation_level'],
+        createdAt: maps[i]['created_at'],
+      );
+    });
+  }
+
+  /// Получает слово по ID
+  Future<Word?> getWordById(int id) async {
+    final db = await this.db;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'words',
       where: 'id = ?',
       whereArgs: [id],
     );
+
+    final category = await getCategoryById(maps[0]['category_id']);
+
+    if (maps.isNotEmpty) {
+      return Word(
+        id: maps[0]['id'],
+        category: category!,
+        name: maps[0]['name'],
+        translation: maps[0]['translation'],
+        nameLevel: maps[0]['name_level'],
+        translationLevel: maps[0]['translation_level'],
+        updateAtNameLevel: maps[0]['update_at_name_level'],
+        updateAtTranslationLevel: maps[0]['update_at_translation_level'],
+        createdAt: maps[0]['created_at'],
+      );
+    }
+    return null;
   }
 
-  Future<void> updateTranslations(
-    int wordId,
-    List<Translation> translations,
-  ) async {
-    Database db = await instance.db;
-    await db.delete('translations', where: 'word_id = ?', whereArgs: [wordId]);
+  /// Получает слово по наименованию
+  Future<Word?> getWordByName(String name) async {
+    final db = await this.db;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'words',
+      where: 'name = ?',
+      whereArgs: [name],
+    );
 
-    for (var translation in translations) {
-      await db.insert('translations', {
-        'word_id': wordId,
-        'name': translation.name,
-        'level': translation.level,
-      });
+    final category = await getCategoryById(maps[0]['category_id']);
+
+    if (maps.isNotEmpty) {
+      return Word(
+        id: maps[0]['id'],
+        category: category!,
+        name: maps[0]['name'],
+        translation: maps[0]['translation'],
+        nameLevel: maps[0]['name_level'],
+        translationLevel: maps[0]['translation_level'],
+        updateAtNameLevel: maps[0]['update_at_name_level'],
+        updateAtTranslationLevel: maps[0]['update_at_translation_level'],
+        createdAt: maps[0]['created_at'],
+      );
+    }
+    return null;
+  }
+
+  /// Получает слово по переводу
+  Future<Word?> getWordByTranslation(String translation) async {
+    final db = await this.db;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'words',
+      where: 'translation = ?',
+      whereArgs: [translation],
+    );
+
+    final category = await getCategoryById(maps[0]['category_id']);
+
+    if (maps.isNotEmpty) {
+      return Word(
+        id: maps[0]['id'],
+        category: category!,
+        name: maps[0]['name'],
+        translation: maps[0]['translation'],
+        nameLevel: maps[0]['name_level'],
+        translationLevel: maps[0]['translation_level'],
+        updateAtNameLevel: maps[0]['update_at_name_level'],
+        updateAtTranslationLevel: maps[0]['update_at_translation_level'],
+        createdAt: maps[0]['created_at'],
+      );
+    }
+    return null;
+  }
+
+  /// Получает статистику по изученным словам, разложенную по уровням
+  Future<Map<String, int>> getLearningStatistics() async {
+    final db = await this.db;
+    final List<Map<String, dynamic>> result = await db.rawQuery('''
+      SELECT 
+        SUM(CASE WHEN name_level == 0 OR translation_level == 0 THEN 1 ELSE 0 END) AS learned_count0,
+        SUM(CASE WHEN name_level == 1 OR translation_level == 1 THEN 1 ELSE 0 END) AS learned_count1,
+        SUM(CASE WHEN name_level == 2 OR translation_level == 2 THEN 1 ELSE 0 END) AS learned_count2,
+        SUM(CASE WHEN name_level == 3 OR translation_level == 3 THEN 1 ELSE 0 END) AS learned_count3,
+        SUM(CASE WHEN name_level == 4 OR translation_level == 4 THEN 1 ELSE 0 END) AS learned_count4,
+        SUM(CASE WHEN name_level == 5 OR translation_level == 5 THEN 1 ELSE 0 END) AS learned_count5,
+        SUM(CASE WHEN name_level == 6 OR translation_level == 6 THEN 1 ELSE 0 END) AS learned_count6,
+        SUM(CASE WHEN name_level == 7 OR translation_level == 7 THEN 1 ELSE 0 END) AS learned_count7,
+        SUM(CASE WHEN name_level > 7 OR translation_level > 7 THEN 1 ELSE 0 END) AS learned_count_all
+      FROM words
+    ''');
+    return result.isNotEmpty
+        ? result[0].map((key, value) => MapEntry(key, value as int))
+        : {};
+  }
+
+  /// Обновляет уровень знания имени слова
+  Future<void> updateNameLevel(int wordId, int newLevel) async {
+    final db = await this.db;
+    await db.update(
+      'words',
+      {
+        'name_level': newLevel,
+        'update_at_name_level': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [wordId],
+    );
+  }
+
+  /// Обновляет уровень знания перевода слова
+  Future<void> updateTranslationLevel(int wordId, int newLevel) async {
+    final db = await this.db;
+    await db.update(
+      'words',
+      {
+        'translation_level': newLevel,
+        'update_at_translation_level': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [wordId],
+    );
+  }
+
+  /// Закрывает соединение с БД
+  Future<void> close() async {
+    try {
+      final db = await this.db;
+      await db.close();
+      _db = null;
+    } catch (e) {
+      debugPrint('Ошибка при закрытии БД: $e');
     }
   }
 
-  Future<void> deleteWord(int id) async {
-    Database db = await instance.db;
-    await db.delete('translations', where: 'word_id = ?', whereArgs: [id]);
-    await db.delete('words', where: 'id = ?', whereArgs: [id]);
-  }
+  /// Заполняет БД тестовыми данными (только для разработки)
+  Future<void> populateTestData() async {
+    if (kDebugMode && _shouldRecreateDbInDebug) {
+      final db = await this.db;
 
-  Future<void> close() async {
-    Database db = await instance.db;
-    db.close();
-  }
+      // Проверяем, есть ли уже данные
+      final count = Sqflite.firstIntValue(
+        await db.rawQuery('SELECT COUNT(*) FROM words'),
+      );
+      if (count != null && count > 0) {
+        return; // Данные уже есть, не заполняем
+      }
 
-  Future<void> initializeWords() async {
-    List<Word> words = [
-      Word(
-        id: 0,
-        name: 'apple',
-        image: '',
-        translations: [Translation(id: 0, wordId: 0, name: 'яблоко', level: 0)],
-      ),
-      Word(
-        id: 0,
-        name: 'banana',
-        image: '',
-        translations: [Translation(id: 0, wordId: 0, name: 'банан', level: 0)],
-      ),
-      Word(
-        id: 0,
-        name: 'orange',
-        image: '',
-        translations: [
-          Translation(id: 0, wordId: 0, name: 'апельсин', level: 0),
-        ],
-      ),
-      Word(
-        id: 0,
-        name: 'grape',
-        image: '',
-        translations: [
-          Translation(id: 0, wordId: 0, name: 'виноград', level: 0),
-        ],
-      ),
-      Word(
-        id: 0,
-        name: 'pear',
-        image: '',
-        translations: [Translation(id: 0, wordId: 0, name: 'груша', level: 0)],
-      ),
-    ];
+      // Создаем тестовую категорию
+      Category testCategory = await insertCategory('Test Category');
 
-    for (var word in words) {
-      await insertWord(word);
+      // Вставляем тестовые слова
+      List<Word> testWords = [
+        Word(
+          id: 0,
+          category: testCategory,
+          name: 'hello',
+          translation: 'привет',
+        ),
+        Word(id: 0, category: testCategory, name: 'world', translation: 'мир'),
+        Word(
+          id: 0,
+          category: testCategory,
+          name: 'computer',
+          translation: 'компьютер',
+        ),
+        Word(
+          id: 0,
+          category: testCategory,
+          name: 'language',
+          translation: 'язык',
+        ),
+        Word(
+          id: 0,
+          category: testCategory,
+          name: 'flutter',
+          translation: 'флаттер',
+        ),
+      ];
+
+      for (var word in testWords) {
+        await insertWord(word);
+      }
     }
   }
 }

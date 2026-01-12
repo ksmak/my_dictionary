@@ -1,113 +1,95 @@
-import 'package:my_dictionary/data.dart';
+import 'package:my_dictionary/data/category.dart';
+import 'package:my_dictionary/data/word.dart';
 import 'package:flutter/material.dart';
 
-class WordModel extends ChangeNotifier {
-  //
-  List<Word> words = [];
-  int index = -1;
-  String message = '';
+class MyModel extends ChangeNotifier {
+  // Приватные поле для инкапсуляции состояния
+  List<Category> _categories = []; // список категорий
+  List<Word> _words = []; // список слов
+  int _categoryIndex = -1; // текущий индекс категории
+  int _wordIndex = -1; // текущий индекс слова
+  String _message = ''; // сообщение
 
-  void setWords(List<Word> newWords) {
-    words = newWords;
+  // Публичные геттеры для доступа
+  List<Word> get words => List.unmodifiable(_words);
+  List<Category> get categories => List.unmodifiable(_categories);
+  int get categoryIndex => _categoryIndex;
+  int get wordIndex => _wordIndex;
+  String get message => _message;
+
+  // метод для загрузки списка категорий
+  void setCategories(List<Category> newCategories) {
+    _categories.clear();
+    _categories = newCategories;
     notifyListeners();
   }
 
-  void setFilteredWords(List<Word> newWords) {
-    words.clear();
-    for (var word in newWords) {
-      List<Translation> translations = word.translations
-          .where(
-            (t) =>
-                (t.level == 0) ||
-                (t.level == 1 &&
-                    DateTime.now()
-                            .difference(DateTime.parse(t.updateAt))
-                            .inHours >
-                        1) ||
-                (t.level == 2 &&
-                    DateTime.now()
-                            .difference(DateTime.parse(t.updateAt))
-                            .inHours >
-                        3) ||
-                (t.level == 3 &&
-                    DateTime.now()
-                            .difference(DateTime.parse(t.updateAt))
-                            .inHours >
-                        6) ||
-                (t.level == 4 &&
-                    DateTime.now()
-                            .difference(DateTime.parse(t.updateAt))
-                            .inHours >
-                        12) ||
-                (t.level == 5 &&
-                    DateTime.now()
-                            .difference(DateTime.parse(t.updateAt))
-                            .inDays >
-                        1) ||
-                (t.level == 6 &&
-                    DateTime.now()
-                            .difference(DateTime.parse(t.updateAt))
-                            .inDays >
-                        3) ||
-                (t.level == 7 &&
-                    DateTime.now()
-                            .difference(DateTime.parse(t.updateAt))
-                            .inDays >
-                        7) ||
-                (t.level == 8 &&
-                    DateTime.now()
-                            .difference(DateTime.parse(t.updateAt))
-                            .inDays >
-                        14) ||
-                (t.level == 9 &&
-                    DateTime.now()
-                            .difference(DateTime.parse(t.updateAt))
-                            .inDays >
-                        30) ||
-                (t.level == 10 &&
-                    DateTime.now()
-                            .difference(DateTime.parse(t.updateAt))
-                            .inDays >
-                        90) ||
-                (t.level == 11 &&
-                    DateTime.now()
-                            .difference(DateTime.parse(t.updateAt))
-                            .inDays >
-                        180),
-          )
-          .toList();
-      if (translations.isNotEmpty) {
-        words.add(word);
-      }
-    }
+  // метод добавления новой категории
+  void addCategory(Category newCategory) {
+    _categories.add(newCategory);
     notifyListeners();
   }
 
-  void updateWord(Word updatedWord) {
-    int index = words.indexWhere((word) => word.id == updatedWord.id);
+  // метод удаления категории по id
+  void removeCategory(int id) {
+    _categories.removeWhere((category) => category.id == id);
+    notifyListeners();
+  }
+
+  // method обновления категории
+  void updateCategory(Category updatedCategory) {
+    int index = _categories.indexWhere(
+      (category) => category.id == updatedCategory.id,
+    );
     if (index != -1) {
-      words[index] = updatedWord;
+      _categories[index] = updatedCategory;
       notifyListeners();
     }
   }
 
+  // метод для загрузки списка слов (для показа словаря)
+  void setWords(List<Word> newWords) {
+    _words.clear();
+    _words = newWords;
+    notifyListeners();
+  }
+
+  // метод обновляет слово в списке
+  void updateWord(Word updatedWord) {
+    int index = _words.indexWhere((word) => word.id == updatedWord.id);
+    if (index != -1) {
+      _words[index] = updatedWord;
+      notifyListeners();
+    }
+  }
+
+  // метод добавляет новое слово в список
   void addWord(Word newWord) {
-    words.add(newWord);
+    _words.add(newWord);
     notifyListeners();
   }
 
+  // метод удаляет слово из списка по id
   void removeWord(int id) {
-    words.removeWhere((word) => word.id == id);
+    _words.removeWhere((word) => word.id == id);
     notifyListeners();
   }
 
-  void setIndex(int newIndex) {
-    index = newIndex;
+  // метод устанавливает текущий индекс категории
+  void setCategoryIndex(int newIndex) {
+    _categoryIndex = newIndex;
     notifyListeners();
   }
 
+  // метод устанавливает текущий индекс слова
+  void setWordIndex(int newIndex) {
+    _wordIndex = newIndex;
+    notifyListeners();
+  }
+
+  // метод устанавливает сообщение
   void setMessage(String newMessage) {
-    message = newMessage;
+    _message = newMessage;
     notifyListeners();
   }
 }
