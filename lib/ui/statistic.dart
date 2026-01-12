@@ -4,7 +4,8 @@ import 'package:my_dictionary/dbhelper.dart';
 /// Экран статистики (заглушка).
 /// Показывает количество выученных слов на разных уровнях.
 class StatisticsPage extends StatelessWidget {
-  const StatisticsPage({super.key});
+  final List<int> currentStats;
+  const StatisticsPage({super.key, required this.currentStats});
 
   @override
   Widget build(BuildContext context) {
@@ -27,38 +28,101 @@ class StatisticsPage extends StatelessWidget {
           } else if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           } else if (snapshot.hasData) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(height: 30),
-                Text('''
-                    Уровень-0:\t${snapshot.data?['learned_count0'] ?? 0}\n       
-                    Уровень-1:\t${snapshot.data?['learned_count1'] ?? 0}\n
-                    Уровень-2:\t${snapshot.data?['learned_count2'] ?? 0}\n
-                    Уровень-3:\t${snapshot.data?['learned_count3'] ?? 0}\n
-                    Уровень-4:\t${snapshot.data?['learned_count4'] ?? 0}\n
-                    Уровень-5:\t${snapshot.data?['learned_count5'] ?? 0}\n
-                    Уровень-6:\t${snapshot.data?['learned_count6'] ?? 0}\n
-                    Уровень-7:\t${snapshot.data?['learned_count7'] ?? 0}\n
-                    Полностью выученные слова:\t${snapshot.data?['learned_count_all'] ?? 0}\n
-                    ''', style: const TextStyle(fontSize: 12)),
-                SizedBox(height: 16),
-                Center(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.secondary,
-                      alignment: Alignment.centerLeft,
-                    ),
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    child: Text(
-                      'Вернуться назад',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    'Количество слов по уровням:',
+                    style: TextStyle(fontSize: 14),
                   ),
-                ),
-              ],
+                  SizedBox(height: 16),
+                  Table(
+                    border: TableBorder.all(color: Colors.grey[300]!),
+                    children: [
+                      TableRow(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                        ),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              'Уровень',
+                              style: TextStyle(fontSize: 14),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              'Количество',
+                              style: TextStyle(fontSize: 14),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              'На сегодня',
+                              style: TextStyle(fontSize: 14),
+                            ),
+                          ),
+                        ],
+                      ),
+                      for (int level = 0; level <= 7; level++)
+                        TableRow(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text(
+                                '$level',
+                                style: TextStyle(fontSize: 14),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text(
+                                '${snapshot.data?['learned_count$level'] ?? 0}',
+                                style: TextStyle(fontSize: 14),
+                              ),
+                            ),
+                            currentStats[level] == 0
+                                ? Container()
+                                : Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Text(
+                                      '+${currentStats[level]}',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.green,
+                                      ),
+                                    ),
+                                  ),
+                          ],
+                        ),
+                      TableRow(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              'Выученных',
+                              style: TextStyle(fontSize: 14),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              '${snapshot.data?['learned_count_all'] ?? 0}',
+                              style: TextStyle(fontSize: 14),
+                            ),
+                          ),
+                          Container(),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             );
           } else {
             return const Center(child: Text('Нет данных'));

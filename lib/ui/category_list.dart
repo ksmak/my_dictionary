@@ -62,11 +62,6 @@ class CategoryListPage extends StatelessWidget {
                   itemBuilder: (BuildContext context, int index) {
                     Category item = myModel.categories[index];
                     return ListTile(
-                      leading: Icon(
-                        Icons.category,
-                        size: 18,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
                       title: Text(item.name),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -75,53 +70,7 @@ class CategoryListPage extends StatelessWidget {
                             ? [
                                 IconButton(
                                   icon: Icon(
-                                    Icons.delete,
-                                    size: 18,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
-                                  ),
-                                  onPressed: () {
-                                    // Удаляем категорию
-                                    showDialog(
-                                      context: context,
-                                      builder: (BuildContext context) {
-                                        return AlertDialog(
-                                          title: const Text(
-                                            "Удаление категории",
-                                          ),
-                                          content: const Text(
-                                            "Вы уверены, что хотите удалить эту категорию?",
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              child: const Text("Отмена"),
-                                              onPressed: () {
-                                                Navigator.of(context).pop();
-                                              },
-                                            ),
-                                            TextButton(
-                                              child: const Text("Удалить"),
-                                              onPressed: () {
-                                                // Удаляем категорию из БД
-                                                Navigator.of(context).pop();
-                                                DBHelper.instance
-                                                    .deleteCategory(item.id);
-                                                Provider.of<MyModel>(
-                                                  context,
-                                                  listen: false,
-                                                ).removeCategory(item.id);
-                                              },
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    );
-                                  },
-                                ),
-                                IconButton(
-                                  icon: Icon(
-                                    Icons.open_in_browser,
+                                    Icons.edit,
                                     size: 18,
                                     color: Theme.of(
                                       context,
@@ -149,10 +98,8 @@ class CategoryListPage extends StatelessWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => DictionaryListPage(
-                                    categories: myModel.categories,
-                                    category: item,
-                                  ),
+                                  builder: (context) =>
+                                      DictionaryListPage(category: item),
                                 ),
                               );
                             }
@@ -166,7 +113,7 @@ class CategoryListPage extends StatelessWidget {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) =>
-                                      CheckingPage(categoryId: item.id),
+                                      CheckingPage(category: item),
                                 ),
                               );
                             },

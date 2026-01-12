@@ -20,6 +20,7 @@ class CategoryItemPage extends StatefulWidget {
 }
 
 class _CategoryItemPageState extends State<CategoryItemPage> {
+  String _category = '';
   final TextEditingController _categoryController = TextEditingController();
   int _formState = 0; // 0 - просмотр, 1 - редактирование
   String _errorMessage = '';
@@ -33,13 +34,14 @@ class _CategoryItemPageState extends State<CategoryItemPage> {
       DBHelper.instance.getCategoryById(widget.id!).then((category) {
         if (category != null) {
           setState(() {
+            _category = category.name;
             _categoryController.text = category.name;
           });
         }
       });
     }
 
-    // Новое слово сразу открываем в режиме редактирования
+    // Новая категория сразу открываем в режиме редактирования
     if (widget.isNew) {
       setState(() {
         _formState = 1;
@@ -95,6 +97,7 @@ class _CategoryItemPageState extends State<CategoryItemPage> {
     }
     setState(() {
       _formState = 0;
+      _category = categoryName;
     });
   }
 
@@ -103,9 +106,20 @@ class _CategoryItemPageState extends State<CategoryItemPage> {
     return showDialog(
       context: context,
       builder: (BuildContext context) {
+        // Удаляем категорию
         return AlertDialog(
-          title: const Text("Удаление категории"),
-          content: const Text("Вы уверены, что хотите удалить эту категорию?"),
+          title: const Text(
+            "Удаление категории",
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.red,
+            ),
+          ),
+          content: const Text(
+            "Все слова в этой категории также будут удалены. Продолжить?",
+            style: TextStyle(fontSize: 16),
+          ),
           actions: [
             TextButton(
               child: const Text("Отмена"),
@@ -114,17 +128,15 @@ class _CategoryItemPageState extends State<CategoryItemPage> {
               },
             ),
             TextButton(
-              child: const Text("Удалить"),
+              child: const Text("Удалить", style: TextStyle(color: Colors.red)),
               onPressed: () {
                 // Удаляем категорию из БД
-                Navigator.of(context).pop();
                 DBHelper.instance.deleteCategory(widget.id!);
                 Provider.of<MyModel>(
                   context,
                   listen: false,
                 ).removeCategory(widget.id!);
-                // Возвращаемся на экран словаря
-                Navigator.pop(context);
+                Navigator.of(context).pop();
               },
             ),
           ],
@@ -170,6 +182,8 @@ class _CategoryItemPageState extends State<CategoryItemPage> {
                   onPressed: () {
                     setState(() {
                       _formState = 0;
+                      _categoryController.text = _category;
+                      _errorMessage = '';
                     });
                   },
                 ),

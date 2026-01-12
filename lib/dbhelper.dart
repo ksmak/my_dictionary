@@ -17,7 +17,7 @@ import 'data/word.dart';
 class DBHelper {
   static final DBHelper instance = DBHelper._instance();
   static Database? _db;
-  static const bool _shouldRecreateDbInDebug = true;
+  static const bool _shouldRecreateDbInDebug = false;
   static const int _databaseVersion = 1;
 
   DBHelper._instance();
@@ -60,12 +60,10 @@ class DBHelper {
         CREATE TABLE words(
           id INTEGER PRIMARY KEY AUTOINCREMENT, 
           category_id INTEGER,
-          name TEXT NOT NULL UNIQUE,
+          name TEXT NOT NULL,
           translation TEXT NOT NULL,
-          name_level INTEGER DEFAULT 0,
-          translation_level INTEGER DEFAULT 0,
-          update_at_name_level DATETIME DEFAULT CURRENT_TIMESTAMP,
-          update_at_translation_level DATETIME DEFAULT CURRENT_TIMESTAMP,
+          level INTEGER DEFAULT 0,
+          update_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP          
         )
       ''');
@@ -171,10 +169,8 @@ class DBHelper {
       'category_id': word.category.id,
       'name': word.name,
       'translation': word.translation,
-      'name_level': word.nameLevel,
-      'translation_level': word.translationLevel,
-      'update_at_name_level': word.updateAtNameLevel,
-      'update_at_translation_level': word.updateAtTranslationLevel,
+      'level': word.level,
+      'update_at': word.updateAt,
       'created_at': word.createdAt,
     });
     return await getWordById(id);
@@ -189,10 +185,8 @@ class DBHelper {
         'category_id': word.category.id,
         'name': word.name,
         'translation': word.translation,
-        'name_level': word.nameLevel,
-        'translation_level': word.translationLevel,
-        'update_at_name_level': word.updateAtNameLevel,
-        'update_at_translation_level': word.updateAtTranslationLevel,
+        'level': word.level,
+        'update_at': word.updateAt,
         'created_at': word.createdAt,
       },
       where: 'id = ?',
@@ -207,9 +201,16 @@ class DBHelper {
     return await db.delete('words', where: 'id = ?', whereArgs: [id]);
   }
 
-  /// Получает списка слов из БД
+  /// Получает список слов из БД
   Future<List<Word>> getAllWords(int categoryId) async {
     final db = await this.db;
+
+    final category = await getCategoryById(categoryId);
+
+    if (category == null) {
+      return [];
+    }
+
     final List<Map<String, dynamic>> maps = await db.query(
       'words',
       where: 'category_id = ?',
@@ -217,63 +218,48 @@ class DBHelper {
       orderBy: 'name ASC',
     );
 
-    final category = await getCategoryById(categoryId);
-
     return List.generate(maps.length, (i) {
       return Word(
         id: maps[i]['id'],
-        category: category!,
+        category: category,
         name: maps[i]['name'],
         translation: maps[i]['translation'],
-        nameLevel: maps[i]['name_level'],
-        translationLevel: maps[i]['translation_level'],
-        updateAtNameLevel: maps[i]['update_at_name_level'],
-        updateAtTranslationLevel: maps[i]['update_at_translation_level'],
+        level: maps[i]['level'],
+        updateAt: maps[i]['update_at'],
         createdAt: maps[i]['created_at'],
       );
     });
   }
 
   /// Получает отфильтрованный список слов из БД
-  Future<List<Word>> getFilteredWords(int categoryId) async {
+  Future<List<Word>> getFilteredWords(Category category) async {
     final db = await this.db;
     final List<Map<String, dynamic>> maps = await db.query(
       'words',
       where: '''
         category_id = ? AND (
-          (name_level == 0 AND translation_level == 0) OR
-          (name_level == 1 AND update_at_name_level <= datetime('now', '-1 day')) OR
-          (translation_level == 1 AND update_at_translation_level <= datetime('now', '-1 day')) OR
-          (name_level == 2 AND update_at_name_level <= datetime('now', '-1 day')) OR
-          (translation_level == 2 AND update_at_translation_level <= datetime('now', '-1 day')) OR
-          (name_level == 3 AND update_at_name_level <= datetime('now', '-1 day')) OR
-          (translation_level == 3 AND update_at_translation_level <= datetime('now', '-1 day')) OR
-          (name_level == 4 AND update_at_name_level <= datetime('now', '-7 days')) OR
-          (translation_level == 4 AND update_at_translation_level <= datetime('now', '-7 days')) OR
-          (name_level == 5 AND update_at_name_level <= datetime('now', '-14 days')) OR
-          (translation_level == 5 AND update_at_translation_level <= datetime('now', '-14 days')) OR
-          (name_level == 6 AND update_at_name_level <= datetime('now', '-30 days')) OR
-          (translation_level == 6 AND update_at_translation_level <= datetime('now', '-30 days')) OR
-          (name_level == 7 AND update_at_name_level <= datetime('now', '-90 days')) OR
-          (translation_level == 7 AND update_at_translation_level <= datetime('now', '-90 days'))
+          level == 0 OR
+          (level == 2 AND update_at <= datetime('now', '-1 day')) OR
+          (level == 2 AND update_at <= datetime('now', '-1 day')) OR
+          (level == 3 AND update_at <= datetime('now', '-1 day')) OR
+          (level == 4 AND update_at <= datetime('now', '-7 days')) OR
+          (level == 5 AND update_at <= datetime('now', '-14 days')) OR
+          (level == 6 AND update_at <= datetime('now', '-30 days')) OR
+          (level == 7 AND update_at <= datetime('now', '-90 days'))
         )
       ''',
-      whereArgs: [categoryId],
+      whereArgs: [category.id],
       orderBy: 'name ASC',
     );
-
-    final category = await getCategoryById(categoryId);
 
     return List.generate(maps.length, (i) {
       return Word(
         id: maps[i]['id'],
-        category: category!,
+        category: category,
         name: maps[i]['name'],
         translation: maps[i]['translation'],
-        nameLevel: maps[i]['name_level'],
-        translationLevel: maps[i]['translation_level'],
-        updateAtNameLevel: maps[i]['update_at_name_level'],
-        updateAtTranslationLevel: maps[i]['update_at_translation_level'],
+        level: maps[i]['level'],
+        updateAt: maps[i]['update_at'],
         createdAt: maps[i]['created_at'],
       );
     });
@@ -288,18 +274,16 @@ class DBHelper {
       whereArgs: [id],
     );
 
-    final category = await getCategoryById(maps[0]['category_id']);
-
     if (maps.isNotEmpty) {
+      final category = await getCategoryById(maps[0]['category_id']);
+
       return Word(
         id: maps[0]['id'],
         category: category!,
         name: maps[0]['name'],
         translation: maps[0]['translation'],
-        nameLevel: maps[0]['name_level'],
-        translationLevel: maps[0]['translation_level'],
-        updateAtNameLevel: maps[0]['update_at_name_level'],
-        updateAtTranslationLevel: maps[0]['update_at_translation_level'],
+        level: maps[0]['level'],
+        updateAt: maps[0]['update_at'],
         createdAt: maps[0]['created_at'],
       );
     }
@@ -315,21 +299,20 @@ class DBHelper {
       whereArgs: [name],
     );
 
-    final category = await getCategoryById(maps[0]['category_id']);
-
     if (maps.isNotEmpty) {
+      final category = await getCategoryById(maps[0]['category_id']);
+
       return Word(
         id: maps[0]['id'],
         category: category!,
         name: maps[0]['name'],
         translation: maps[0]['translation'],
-        nameLevel: maps[0]['name_level'],
-        translationLevel: maps[0]['translation_level'],
-        updateAtNameLevel: maps[0]['update_at_name_level'],
-        updateAtTranslationLevel: maps[0]['update_at_translation_level'],
+        level: maps[0]['level'],
+        updateAt: maps[0]['update_at'],
         createdAt: maps[0]['created_at'],
       );
     }
+
     return null;
   }
 
@@ -342,21 +325,20 @@ class DBHelper {
       whereArgs: [translation],
     );
 
-    final category = await getCategoryById(maps[0]['category_id']);
-
     if (maps.isNotEmpty) {
+      final category = await getCategoryById(maps[0]['category_id']);
+
       return Word(
         id: maps[0]['id'],
         category: category!,
         name: maps[0]['name'],
         translation: maps[0]['translation'],
-        nameLevel: maps[0]['name_level'],
-        translationLevel: maps[0]['translation_level'],
-        updateAtNameLevel: maps[0]['update_at_name_level'],
-        updateAtTranslationLevel: maps[0]['update_at_translation_level'],
+        level: maps[0]['level'],
+        updateAt: maps[0]['update_at'],
         createdAt: maps[0]['created_at'],
       );
     }
+
     return null;
   }
 
@@ -365,15 +347,15 @@ class DBHelper {
     final db = await this.db;
     final List<Map<String, dynamic>> result = await db.rawQuery('''
       SELECT 
-        SUM(CASE WHEN name_level == 0 OR translation_level == 0 THEN 1 ELSE 0 END) AS learned_count0,
-        SUM(CASE WHEN name_level == 1 OR translation_level == 1 THEN 1 ELSE 0 END) AS learned_count1,
-        SUM(CASE WHEN name_level == 2 OR translation_level == 2 THEN 1 ELSE 0 END) AS learned_count2,
-        SUM(CASE WHEN name_level == 3 OR translation_level == 3 THEN 1 ELSE 0 END) AS learned_count3,
-        SUM(CASE WHEN name_level == 4 OR translation_level == 4 THEN 1 ELSE 0 END) AS learned_count4,
-        SUM(CASE WHEN name_level == 5 OR translation_level == 5 THEN 1 ELSE 0 END) AS learned_count5,
-        SUM(CASE WHEN name_level == 6 OR translation_level == 6 THEN 1 ELSE 0 END) AS learned_count6,
-        SUM(CASE WHEN name_level == 7 OR translation_level == 7 THEN 1 ELSE 0 END) AS learned_count7,
-        SUM(CASE WHEN name_level > 7 OR translation_level > 7 THEN 1 ELSE 0 END) AS learned_count_all
+        SUM(CASE WHEN level == 0 THEN 1 ELSE 0 END) AS learned_count0,
+        SUM(CASE WHEN level == 1 THEN 1 ELSE 0 END) AS learned_count1,
+        SUM(CASE WHEN level == 2 THEN 1 ELSE 0 END) AS learned_count2,
+        SUM(CASE WHEN level == 3 THEN 1 ELSE 0 END) AS learned_count3,
+        SUM(CASE WHEN level == 4 THEN 1 ELSE 0 END) AS learned_count4,
+        SUM(CASE WHEN level == 5 THEN 1 ELSE 0 END) AS learned_count5,
+        SUM(CASE WHEN level == 6 THEN 1 ELSE 0 END) AS learned_count6,
+        SUM(CASE WHEN level == 7 THEN 1 ELSE 0 END) AS learned_count7,
+        SUM(CASE WHEN level > 7 THEN 1 ELSE 0 END) AS learned_count_all
       FROM words
     ''');
     return result.isNotEmpty
@@ -381,29 +363,12 @@ class DBHelper {
         : {};
   }
 
-  /// Обновляет уровень знания имени слова
-  Future<void> updateNameLevel(int wordId, int newLevel) async {
+  /// Обновляет уровень знания слова
+  Future<void> updateLevel(int wordId, int newLevel) async {
     final db = await this.db;
     await db.update(
       'words',
-      {
-        'name_level': newLevel,
-        'update_at_name_level': DateTime.now().toIso8601String(),
-      },
-      where: 'id = ?',
-      whereArgs: [wordId],
-    );
-  }
-
-  /// Обновляет уровень знания перевода слова
-  Future<void> updateTranslationLevel(int wordId, int newLevel) async {
-    final db = await this.db;
-    await db.update(
-      'words',
-      {
-        'translation_level': newLevel,
-        'update_at_translation_level': DateTime.now().toIso8601String(),
-      },
+      {'level': newLevel, 'update_at': DateTime.now().toIso8601String()},
       where: 'id = ?',
       whereArgs: [wordId],
     );
@@ -434,38 +399,74 @@ class DBHelper {
       }
 
       // Создаем тестовую категорию
-      Category testCategory = await insertCategory('Test Category');
+      Category testCategory1 = await insertCategory('Test Category1');
 
       // Вставляем тестовые слова
-      List<Word> testWords = [
+      List<Word> testWords1 = [
         Word(
           id: 0,
-          category: testCategory,
+          category: testCategory1,
           name: 'hello',
           translation: 'привет',
         ),
-        Word(id: 0, category: testCategory, name: 'world', translation: 'мир'),
+        Word(id: 0, category: testCategory1, name: 'world', translation: 'мир'),
         Word(
           id: 0,
-          category: testCategory,
+          category: testCategory1,
           name: 'computer',
           translation: 'компьютер',
         ),
         Word(
           id: 0,
-          category: testCategory,
+          category: testCategory1,
           name: 'language',
           translation: 'язык',
         ),
         Word(
           id: 0,
-          category: testCategory,
+          category: testCategory1,
           name: 'flutter',
           translation: 'флаттер',
         ),
       ];
 
-      for (var word in testWords) {
+      for (var word in testWords1) {
+        await insertWord(word);
+      }
+
+      // Создаем тестовую категорию
+      Category testCategory2 = await insertCategory('Test Category2');
+
+      // Вставляем тестовые слова
+      List<Word> testWords2 = [
+        Word(
+          id: 0,
+          category: testCategory2,
+          name: 'hello',
+          translation: 'привет',
+        ),
+        Word(id: 0, category: testCategory2, name: 'world', translation: 'мир'),
+        Word(
+          id: 0,
+          category: testCategory2,
+          name: 'computer',
+          translation: 'компьютер',
+        ),
+        Word(
+          id: 0,
+          category: testCategory2,
+          name: 'language',
+          translation: 'язык',
+        ),
+        Word(
+          id: 0,
+          category: testCategory2,
+          name: 'flutter',
+          translation: 'флаттер',
+        ),
+      ];
+
+      for (var word in testWords2) {
         await insertWord(word);
       }
     }

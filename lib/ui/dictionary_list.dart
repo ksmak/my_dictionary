@@ -15,14 +15,9 @@ import '../data/word.dart';
 /// 3. Добавлять новые слова (через FAB)
 /// 4. Видеть новые слова (иконка "new")
 class DictionaryListPage extends StatelessWidget {
-  final List<Category> categories;
   final Category category;
 
-  const DictionaryListPage({
-    super.key,
-    required this.categories,
-    required this.category,
-  });
+  const DictionaryListPage({super.key, required this.category});
 
   @override
   Widget build(BuildContext context) {
@@ -80,9 +75,7 @@ class DictionaryListPage extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      trailing:
-                          myModel.words[index].translationLevel == 0 ||
-                              myModel.words[index].nameLevel == 0
+                      trailing: myModel.words[index].level == 0
                           ? Image.asset("assets/images/new.png")
                           : null,
                       onTap: () {
@@ -91,7 +84,6 @@ class DictionaryListPage extends StatelessWidget {
                           context,
                           MaterialPageRoute(
                             builder: (context) => DictionaryItemPage(
-                              categories: categories,
                               category: category,
                               id: item.id,
                             ),
@@ -115,11 +107,8 @@ class DictionaryListPage extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => DictionaryItemPage(
-                categories: categories,
-                category: category,
-                isNew: true,
-              ),
+              builder: (context) =>
+                  DictionaryItemPage(category: category, isNew: true),
             ),
           );
         },

@@ -21,6 +21,11 @@ class MyModel extends ChangeNotifier {
   void setCategories(List<Category> newCategories) {
     _categories.clear();
     _categories = newCategories;
+    if (_categories.isNotEmpty) {
+      _categoryIndex = 0;
+    } else {
+      _categoryIndex = -1;
+    }
     notifyListeners();
   }
 
@@ -51,6 +56,11 @@ class MyModel extends ChangeNotifier {
   void setWords(List<Word> newWords) {
     _words.clear();
     _words = newWords;
+    if (_words.isNotEmpty) {
+      _wordIndex = 0;
+    } else {
+      _wordIndex = -1;
+    }
     notifyListeners();
   }
 

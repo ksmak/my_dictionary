@@ -11,14 +11,12 @@ import 'package:provider/provider.dart';
 /// 1. Просмотр (только чтение)
 /// 2. Редактирование (добавление/удаление переводов)
 class DictionaryItemPage extends StatefulWidget {
-  final List<Category> categories;
-  final Category category; // Категория для нового слова
+  final Category category;
   final int? id; // ID слова для редактирования (null для нового)
   final bool isNew; // Флаг создания нового слова
 
   const DictionaryItemPage({
     super.key,
-    required this.categories,
     required this.category,
     this.id,
     this.isNew = false,
@@ -29,7 +27,8 @@ class DictionaryItemPage extends StatefulWidget {
 }
 
 class _DictionaryItemPageState extends State<DictionaryItemPage> {
-  final TextEditingController _categoryController = TextEditingController();
+  String _word = '';
+  String _translation = '';
   final TextEditingController _wordController = TextEditingController();
   final TextEditingController _translationController = TextEditingController();
   int _formState = 0; // 0 - просмотр, 1 - редактирование
@@ -44,14 +43,15 @@ class _DictionaryItemPageState extends State<DictionaryItemPage> {
       DBHelper.instance.getWordById(widget.id!).then((word) {
         if (word != null) {
           setState(() {
-            _categoryController.text = widget.category.name;
+            _word = word.name;
+            _translation = word.translation;
             _wordController.text = word.name;
             _translationController.text = word.translation;
+            _errorMessage = '';
           });
         }
       });
     }
-
     // Новое слово сразу открываем в режиме редактирования
     if (widget.isNew) {
       setState(() {
@@ -63,7 +63,6 @@ class _DictionaryItemPageState extends State<DictionaryItemPage> {
   @override
   void dispose() {
     // Освобождаем все контроллеры
-    _categoryController.dispose();
     _wordController.dispose();
     _translationController.dispose();
     super.dispose();
@@ -133,8 +132,18 @@ class _DictionaryItemPageState extends State<DictionaryItemPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text("Удаление слова"),
-          content: const Text("Вы уверены, что хотите удалить это слово?"),
+          title: const Text(
+            "Удаление слова",
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.red,
+            ),
+          ),
+          content: const Text(
+            "Удалить это слово?",
+            style: TextStyle(fontSize: 16),
+          ),
           actions: [
             TextButton(
               child: const Text("Отмена"),
@@ -143,7 +152,7 @@ class _DictionaryItemPageState extends State<DictionaryItemPage> {
               },
             ),
             TextButton(
-              child: const Text("Удалить"),
+              child: const Text("Удалить", style: TextStyle(color: Colors.red)),
               onPressed: () {
                 // Удаляем слово из БД
                 Navigator.of(context).pop();
@@ -199,6 +208,10 @@ class _DictionaryItemPageState extends State<DictionaryItemPage> {
                   onPressed: () {
                     setState(() {
                       _formState = 0;
+                      _errorMessage = '';
+                      // Восстанавливаем прежние значения
+                      _wordController.text = _word;
+                      _translationController.text = _translation;
                     });
                   },
                 ),
@@ -227,15 +240,6 @@ class _DictionaryItemPageState extends State<DictionaryItemPage> {
                   ? [
                       // РЕЖИМ ПРОСМОТРА
                       SizedBox(height: 12),
-                      Text('Категория:', style: TextStyle(fontSize: 12)),
-                      Text(
-                        _categoryController.text,
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 12),
                       Text('Слово:', style: TextStyle(fontSize: 12)),
                       Text(
                         _wordController.text,
@@ -253,6 +257,13 @@ class _DictionaryItemPageState extends State<DictionaryItemPage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+                      SizedBox(height: 16),
+                      Text(
+                        widget.id != null
+                            ? 'Уровень знания слова: ${Provider.of<MyModel>(context, listen: false).words.firstWhere((word) => word.id == widget.id!).level}'
+                            : 'Уровень знания слова: 0',
+                        style: TextStyle(fontSize: 12),
+                      ),
                       SizedBox(height: 20),
                     ]
                   : [
@@ -267,34 +278,6 @@ class _DictionaryItemPageState extends State<DictionaryItemPage> {
                             )
                           : Container(),
                       SizedBox(height: 10),
-                      DropdownButtonFormField<Category>(
-                        style: TextStyle(fontSize: 18, color: Colors.black),
-                        value: widget.category,
-                        decoration: const InputDecoration(
-                          labelText: 'Категория',
-                          hintStyle: TextStyle(fontSize: 18),
-                        ),
-                        items: widget.categories
-                            .map<DropdownMenuItem<Category>>((
-                              Category category,
-                            ) {
-                              return DropdownMenuItem<Category>(
-                                value: category,
-                                child: Text(
-                                  category.name,
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                              );
-                            })
-                            .toList(),
-                        onChanged: (Category? value) {},
-                        validator: (value) {
-                          if (value == null) {
-                            return 'Please select an option';
-                          }
-                          return null;
-                        },
-                      ),
                       SizedBox(height: 20),
                       // Поле для ввода слова
                       TextField(
