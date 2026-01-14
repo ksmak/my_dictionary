@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import 'package:my_dictionary/data/category.dart';
 import 'package:my_dictionary/dbhelper.dart';
+import 'package:my_dictionary/l10n/app_localizations.dart';
 import 'package:my_dictionary/model.dart';
-import 'package:provider/provider.dart';
 
 /// Экран для редактирования или создания категории.
 ///
@@ -24,6 +26,7 @@ class _CategoryItemPageState extends State<CategoryItemPage> {
   final TextEditingController _categoryController = TextEditingController();
   int _formState = 0; // 0 - просмотр, 1 - редактирование
   String _errorMessage = '';
+  int? _id;
 
   @override
   void initState() {
@@ -34,6 +37,7 @@ class _CategoryItemPageState extends State<CategoryItemPage> {
       DBHelper.instance.getCategoryById(widget.id!).then((category) {
         if (category != null) {
           setState(() {
+            _id = widget.id!;
             _category = category.name;
             _categoryController.text = category.name;
           });
@@ -62,7 +66,7 @@ class _CategoryItemPageState extends State<CategoryItemPage> {
     // Валидация: категория не может быть пустой
     if (categoryName.isEmpty) {
       setState(() {
-        _errorMessage = 'Ошибка! Категория не может быть пустой.';
+        _errorMessage = AppLocalizations.of(context)!.err_category_not_empty;
       });
       return;
     }
@@ -71,23 +75,24 @@ class _CategoryItemPageState extends State<CategoryItemPage> {
     Category? existCategory = await DBHelper.instance.getCategoryByName(
       categoryName,
     );
-    if (existCategory != null && existCategory.id != widget.id) {
+    if (existCategory != null && existCategory.id != _id) {
       setState(() {
-        _errorMessage = 'Ошибка! Категория уже существует в словаре.';
+        _errorMessage = AppLocalizations.of(context)!.err_category_exists;
       });
       return;
     }
 
-    if (widget.id == null) {
+    if (_id == null) {
       // СОЗДАНИЕ новой категории
       Category savedCategory = await DBHelper.instance.insertCategory(
         categoryName,
       );
+      _id = savedCategory.id;
       Provider.of<MyModel>(context, listen: false).addCategory(savedCategory);
     } else {
       // ОБНОВЛЕНИЕ существующей категории
       Category updatedCategory = await DBHelper.instance.updateCategory(
-        widget.id!,
+        _id!,
         categoryName,
       );
       Provider.of<MyModel>(
@@ -108,35 +113,39 @@ class _CategoryItemPageState extends State<CategoryItemPage> {
       builder: (BuildContext context) {
         // Удаляем категорию
         return AlertDialog(
-          title: const Text(
-            "Удаление категории",
-            style: TextStyle(
+          title: Text(
+            AppLocalizations.of(context)!.txt_delete_category,
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.red,
             ),
           ),
-          content: const Text(
-            "Все слова в этой категории также будут удалены. Продолжить?",
-            style: TextStyle(fontSize: 16),
+          content: Text(
+            AppLocalizations.of(context)!.txt_warning_delete_category,
+            style: const TextStyle(fontSize: 16),
           ),
           actions: [
             TextButton(
-              child: const Text("Отмена"),
+              child: Text(AppLocalizations.of(context)!.btn_cancel),
               onPressed: () {
-                Navigator.of(context).pop();
+                Navigator.pop(context); // Закрываем диалог
               },
             ),
             TextButton(
-              child: const Text("Удалить", style: TextStyle(color: Colors.red)),
-              onPressed: () {
+              child: Text(
+                AppLocalizations.of(context)!.btn_delete,
+                style: const TextStyle(color: Colors.red),
+              ),
+              onPressed: () async {
                 // Удаляем категорию из БД
-                DBHelper.instance.deleteCategory(widget.id!);
+                await DBHelper.instance.deleteCategory(_id!);
                 Provider.of<MyModel>(
                   context,
                   listen: false,
-                ).removeCategory(widget.id!);
-                Navigator.of(context).pop();
+                ).removeCategory(_id!);
+                Navigator.pop(context); // Закрываем диалог
+                Navigator.pop(context); // Возвращаемся на предыдущий экран
               },
             ),
           ],
@@ -238,8 +247,8 @@ class _CategoryItemPageState extends State<CategoryItemPage> {
                       // Поле для ввода категории
                       TextField(
                         controller: _categoryController,
-                        decoration: const InputDecoration(
-                          labelText: 'Категория',
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.txt_category,
                         ),
                         style: TextStyle(fontSize: 18),
                       ),

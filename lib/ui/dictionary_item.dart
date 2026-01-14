@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:my_dictionary/l10n/app_localizations.dart';
+import 'package:provider/provider.dart';
+
 import 'package:my_dictionary/data/category.dart';
 import 'package:my_dictionary/data/word.dart';
 import 'package:my_dictionary/dbhelper.dart';
 import 'package:my_dictionary/model.dart';
-import 'package:provider/provider.dart';
 
 /// Экран для редактирования или создания слова.
 ///
@@ -27,8 +29,8 @@ class DictionaryItemPage extends StatefulWidget {
 }
 
 class _DictionaryItemPageState extends State<DictionaryItemPage> {
-  String _word = '';
-  String _translation = '';
+  int? _id;
+  Word? _word;
   final TextEditingController _wordController = TextEditingController();
   final TextEditingController _translationController = TextEditingController();
   int _formState = 0; // 0 - просмотр, 1 - редактирование
@@ -43,8 +45,8 @@ class _DictionaryItemPageState extends State<DictionaryItemPage> {
       DBHelper.instance.getWordById(widget.id!).then((word) {
         if (word != null) {
           setState(() {
-            _word = word.name;
-            _translation = word.translation;
+            _id = widget.id!;
+            _word = word;
             _wordController.text = word.name;
             _translationController.text = word.translation;
             _errorMessage = '';
@@ -73,7 +75,7 @@ class _DictionaryItemPageState extends State<DictionaryItemPage> {
     // Валидация: слово не может быть пустым
     if (_wordController.text.isEmpty) {
       setState(() {
-        _errorMessage = 'Ошибка! Слово не может быть пустым.';
+        _errorMessage = AppLocalizations.of(context)!.err_word_no_empty;
       });
       return;
     }
@@ -81,7 +83,7 @@ class _DictionaryItemPageState extends State<DictionaryItemPage> {
     // Валидация: перевод не может быть пустым
     if (_translationController.text.isEmpty) {
       setState(() {
-        _errorMessage = 'Ошибка! Перевод не может быть пустым.';
+        _errorMessage = AppLocalizations.of(context)!.err_trans_no_empty;
       });
       return;
     }
@@ -91,14 +93,14 @@ class _DictionaryItemPageState extends State<DictionaryItemPage> {
       _wordController.text.trim().toLowerCase(),
     );
 
-    if (existWord != null && existWord.id != widget.id) {
+    if (existWord != null && existWord.id != _id) {
       setState(() {
-        _errorMessage = 'Ошибка! Слово уже существует в словаре.';
+        _errorMessage = AppLocalizations.of(context)!.err_word_exists;
       });
       return;
     }
 
-    if (widget.id == null) {
+    if (_id == null && _word == null) {
       // СОЗДАНИЕ нового слова
       Word newWord = Word(
         id: 0,
@@ -107,15 +109,20 @@ class _DictionaryItemPageState extends State<DictionaryItemPage> {
         translation: _translationController.text.trim().toLowerCase(),
       );
       Word savedWord = (await DBHelper.instance.insertWord(newWord)) as Word;
+      _id = savedWord.id;
+      _word = savedWord;
       // ignore: use_build_context_synchronously
       Provider.of<MyModel>(context, listen: false).addWord(savedWord);
     } else {
       // ОБНОВЛЕНИЕ существующего слова
-      final updatedWord = Word(
-        id: widget.id!,
-        category: widget.category,
+      Word updatedWord = Word(
+        id: _word!.id,
+        category: _word!.category,
         name: _wordController.text.trim().toLowerCase(),
         translation: _translationController.text.trim().toLowerCase(),
+        level: _word!.level,
+        updateAt: _word!.updateAt,
+        createdAt: _word!.createdAt,
       );
       await DBHelper.instance.updateWord(updatedWord);
       // ignore: use_build_context_synchronously
@@ -132,36 +139,35 @@ class _DictionaryItemPageState extends State<DictionaryItemPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text(
-            "Удаление слова",
-            style: TextStyle(
+          title: Text(
+            AppLocalizations.of(context)!.txt_delete_word,
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.red,
             ),
           ),
-          content: const Text(
-            "Удалить это слово?",
-            style: TextStyle(fontSize: 16),
+          content: Text(
+            AppLocalizations.of(context)!.txt_ask_delete_word,
+            style: const TextStyle(fontSize: 16),
           ),
           actions: [
             TextButton(
-              child: const Text("Отмена"),
+              child: Text(AppLocalizations.of(context)!.btn_cancel),
               onPressed: () {
                 Navigator.of(context).pop();
               },
             ),
             TextButton(
-              child: const Text("Удалить", style: TextStyle(color: Colors.red)),
+              child: Text(
+                AppLocalizations.of(context)!.btn_delete,
+                style: const TextStyle(color: Colors.red),
+              ),
               onPressed: () {
                 // Удаляем слово из БД
-                Navigator.of(context).pop();
-                DBHelper.instance.deleteWord(widget.id!);
-                Provider.of<MyModel>(
-                  context,
-                  listen: false,
-                ).removeWord(widget.id!);
-                // Возвращаемся на экран словаря
+                DBHelper.instance.deleteWord(_id!);
+                Provider.of<MyModel>(context, listen: false).removeWord(_id!);
+                Navigator.pop(context);
                 Navigator.pop(context);
               },
             ),
@@ -210,8 +216,8 @@ class _DictionaryItemPageState extends State<DictionaryItemPage> {
                       _formState = 0;
                       _errorMessage = '';
                       // Восстанавливаем прежние значения
-                      _wordController.text = _word;
-                      _translationController.text = _translation;
+                      _wordController.text = _word?.name ?? '';
+                      _translationController.text = _word?.translation ?? '';
                     });
                   },
                 ),
@@ -240,7 +246,10 @@ class _DictionaryItemPageState extends State<DictionaryItemPage> {
                   ? [
                       // РЕЖИМ ПРОСМОТРА
                       SizedBox(height: 12),
-                      Text('Слово:', style: TextStyle(fontSize: 12)),
+                      Text(
+                        AppLocalizations.of(context)!.txt_word,
+                        style: TextStyle(fontSize: 12),
+                      ),
                       Text(
                         _wordController.text,
                         style: TextStyle(
@@ -249,7 +258,10 @@ class _DictionaryItemPageState extends State<DictionaryItemPage> {
                         ),
                       ),
                       SizedBox(height: 12),
-                      Text('Перевод:', style: TextStyle(fontSize: 12)),
+                      Text(
+                        AppLocalizations.of(context)!.txt_trans,
+                        style: TextStyle(fontSize: 12),
+                      ),
                       Text(
                         _translationController.text,
                         style: TextStyle(
@@ -259,9 +271,9 @@ class _DictionaryItemPageState extends State<DictionaryItemPage> {
                       ),
                       SizedBox(height: 16),
                       Text(
-                        widget.id != null
-                            ? 'Уровень знания слова: ${Provider.of<MyModel>(context, listen: false).words.firstWhere((word) => word.id == widget.id!).level}'
-                            : 'Уровень знания слова: 0',
+                        _id != null
+                            ? '${AppLocalizations.of(context)!.txt_level}: ${Provider.of<MyModel>(context, listen: false).words.firstWhere((word) => word.id == _id!).level}'
+                            : '${AppLocalizations.of(context)!.txt_level}: 0',
                         style: TextStyle(fontSize: 12),
                       ),
                       SizedBox(height: 20),
@@ -282,14 +294,18 @@ class _DictionaryItemPageState extends State<DictionaryItemPage> {
                       // Поле для ввода слова
                       TextField(
                         controller: _wordController,
-                        decoration: const InputDecoration(labelText: 'Слово'),
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.txt_word,
+                        ),
                         style: TextStyle(fontSize: 18),
                       ),
                       SizedBox(height: 20),
                       // Поле для ввода перевода
                       TextField(
                         controller: _translationController,
-                        decoration: const InputDecoration(labelText: 'Перевод'),
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.txt_trans,
+                        ),
                         style: TextStyle(fontSize: 18),
                       ),
                       SizedBox(height: 20),

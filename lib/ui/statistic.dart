@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:my_dictionary/dbhelper.dart';
 
-/// Экран статистики (заглушка).
+import 'package:my_dictionary/dbhelper.dart';
+import 'package:my_dictionary/l10n/app_localizations.dart';
+
+/// Экран статистики.
 /// Показывает количество выученных слов на разных уровнях.
 class StatisticsPage extends StatelessWidget {
   final List<int> currentStats;
@@ -14,7 +16,7 @@ class StatisticsPage extends StatelessWidget {
         iconTheme: IconThemeData(color: Colors.white),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(
-          'Статистика',
+          AppLocalizations.of(context)!.txt_stats,
           style: Theme.of(
             context,
           ).textTheme.titleLarge!.copyWith(color: Colors.white),
@@ -34,7 +36,7 @@ class StatisticsPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
-                    'Количество слов по уровням:',
+                    AppLocalizations.of(context)!.txt_count_for_level,
                     style: TextStyle(fontSize: 14),
                   ),
                   SizedBox(height: 16),
@@ -49,21 +51,21 @@ class StatisticsPage extends StatelessWidget {
                           Padding(
                             padding: const EdgeInsets.all(8.0),
                             child: Text(
-                              'Уровень',
+                              AppLocalizations.of(context)!.txt_level,
                               style: TextStyle(fontSize: 14),
                             ),
                           ),
                           Padding(
                             padding: const EdgeInsets.all(8.0),
                             child: Text(
-                              'Количество',
+                              AppLocalizations.of(context)!.txt_count,
                               style: TextStyle(fontSize: 14),
                             ),
                           ),
                           Padding(
                             padding: const EdgeInsets.all(8.0),
                             child: Text(
-                              'На сегодня',
+                              AppLocalizations.of(context)!.txt_today,
                               style: TextStyle(fontSize: 14),
                             ),
                           ),
@@ -105,7 +107,7 @@ class StatisticsPage extends StatelessWidget {
                           Padding(
                             padding: const EdgeInsets.all(8.0),
                             child: Text(
-                              'Выученных',
+                              AppLocalizations.of(context)!.txt_leant,
                               style: TextStyle(fontSize: 14),
                             ),
                           ),
@@ -125,7 +127,9 @@ class StatisticsPage extends StatelessWidget {
               ),
             );
           } else {
-            return const Center(child: Text('Нет данных'));
+            return Center(
+              child: Text(AppLocalizations.of(context)!.txt_no_data),
+            );
           }
         },
       ),

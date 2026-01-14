@@ -238,10 +238,9 @@ class DBHelper {
       'words',
       where: '''
         category_id = ? AND (
-          level == 0 OR
+          level < 2 OR
           (level == 2 AND update_at <= datetime('now', '-1 day')) OR
-          (level == 2 AND update_at <= datetime('now', '-1 day')) OR
-          (level == 3 AND update_at <= datetime('now', '-1 day')) OR
+          (level == 3 AND update_at <= datetime('now', '-3 day')) OR
           (level == 4 AND update_at <= datetime('now', '-7 days')) OR
           (level == 5 AND update_at <= datetime('now', '-14 days')) OR
           (level == 6 AND update_at <= datetime('now', '-30 days')) OR

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:my_dictionary/model.dart';
-import 'package:my_dictionary/ui/category_item.dart';
 import 'package:provider/provider.dart';
 
-import 'checking.dart';
-import '../data/category.dart';
-import 'dictionary_list.dart';
-import '../dbhelper.dart';
+import 'package:my_dictionary/l10n/app_localizations.dart';
+import 'package:my_dictionary/model.dart';
+import 'package:my_dictionary/ui/category_item.dart';
+import 'package:my_dictionary/ui/checking.dart';
+import 'package:my_dictionary/data/category.dart';
+import 'package:my_dictionary/ui/dictionary_list.dart';
+import 'package:my_dictionary/dbhelper.dart';
 
 /// Экран для показа списка категорий.
 ///
@@ -29,7 +30,7 @@ class CategoryListPage extends StatelessWidget {
         iconTheme: IconThemeData(color: Colors.white),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(
-          'Категории',
+          AppLocalizations.of(context)!.txt_categories,
           style: Theme.of(
             context,
           ).textTheme.titleLarge!.copyWith(color: Colors.white),
@@ -124,7 +125,9 @@ class CategoryListPage extends StatelessWidget {
               },
             );
           } else {
-            return Center(child: Text('Нет данных'));
+            return Center(
+              child: Text(AppLocalizations.of(context)!.txt_no_data),
+            );
           }
         },
       ),

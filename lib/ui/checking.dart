@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:my_dictionary/l10n/app_localizations.dart';
+
 import 'package:my_dictionary/ui/statistic.dart';
 import 'package:my_dictionary/data/category.dart';
 import 'package:my_dictionary/data/word.dart';
@@ -42,6 +44,7 @@ class _CheckingPageState extends State<CheckingPage> {
     DBHelper.instance.getFilteredWords(widget.category).then((loadedWords) {
       setState(() {
         loading = false;
+        loadedWords.shuffle();
         words = loadedWords;
         currentIndex = 0;
       });
@@ -60,13 +63,13 @@ class _CheckingPageState extends State<CheckingPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'На сегодня нет слов для проверки\nПожалуйста, добавьте новое слово в словарь',
+                    AppLocalizations.of(context)!.txt_today_no_words,
                     textAlign: TextAlign.center,
                   ),
                   SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: goBack,
-                    child: const Text('Вернуться назад'),
+                    child: Text(AppLocalizations.of(context)!.btn_back),
                   ),
                 ],
               ),
@@ -79,16 +82,15 @@ class _CheckingPageState extends State<CheckingPage> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     SizedBox(height: 40),
-                    // Текущее слово для перевода
                     Text(
-                      words[currentIndex].name,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                      words[currentIndex].translation.splitMapJoin(
+                        ';',
+                        onNonMatch: (s) => s.trim(),
+                        onMatch: (s) => '\n',
                       ),
+                      style: const TextStyle(fontSize: 18),
                     ),
                     SizedBox(height: 10),
-                    // Поле для ввода перевода
                     TextField(
                       controller: _translationController,
                       decoration: const InputDecoration(
@@ -99,7 +101,7 @@ class _CheckingPageState extends State<CheckingPage> {
                       ),
                       textAlign: TextAlign.center,
                       autofocus: true, // Автофокус для быстрого ввода
-                      style: TextStyle(fontSize: 22),
+                      style: TextStyle(fontSize: 18),
                       onSubmitted: (value) => checkTranslation(
                         words[currentIndex],
                         _translationController.text,
@@ -119,7 +121,7 @@ class _CheckingPageState extends State<CheckingPage> {
                               nextWord(currentIndex + 1, words.length - 1);
                             },
                             child: Text(
-                              'Следующий',
+                              AppLocalizations.of(context)!.btn_next,
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           )
@@ -137,7 +139,7 @@ class _CheckingPageState extends State<CheckingPage> {
                               );
                             },
                             child: Text(
-                              'Проверить',
+                              AppLocalizations.of(context)!.btn_check,
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           ),
@@ -148,7 +150,7 @@ class _CheckingPageState extends State<CheckingPage> {
                               ? Column(
                                   children: [
                                     Text(
-                                      'Правильно!',
+                                      AppLocalizations.of(context)!.txt_right,
                                       style: const TextStyle(
                                         fontSize: 16,
                                         color: Colors.green,
@@ -159,7 +161,7 @@ class _CheckingPageState extends State<CheckingPage> {
                               : Column(
                                   children: [
                                     Text(
-                                      'Неправильно!',
+                                      AppLocalizations.of(context)!.txt_wrong,
                                       style: const TextStyle(
                                         fontSize: 16,
                                         color: Colors.red,
@@ -167,7 +169,7 @@ class _CheckingPageState extends State<CheckingPage> {
                                     ),
                                     SizedBox(height: 8),
                                     Text(
-                                      'Правильный ответ: ${words[currentIndex].translation}',
+                                      '${AppLocalizations.of(context)!.txt_answer} ${words[currentIndex].name}',
                                       style: const TextStyle(
                                         fontSize: 16,
                                         fontStyle: FontStyle.italic,
@@ -186,7 +188,7 @@ class _CheckingPageState extends State<CheckingPage> {
   /// Метод для проверки правильности перевода
   void checkTranslation(Word word, String translation) async {
     String translate = _translationController.text.trim().toLowerCase();
-    if (translate == word.translation.trim().toLowerCase()) {
+    if (translate == word.name.trim().toLowerCase()) {
       // Увеличиваем уровень
       await DBHelper.instance.updateLevel(word.id, word.level + 1);
       setState(() {

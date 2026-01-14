@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'l10n/app_localizations.dart';
 
 import 'dbhelper.dart';
 import 'model.dart';
@@ -48,6 +50,16 @@ class MyApp extends StatelessWidget {
           bodyMedium: GoogleFonts.robotoSlab(fontSize: 20), // Текст кнопок
         ),
       ),
+      localizationsDelegates: [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: [
+        Locale('en'), // English
+        Locale('ru'), // Russion
+      ],
       home: MainPage(), // Стартовый экран
     );
   }
@@ -63,7 +75,7 @@ class MainPage extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(
-          'Мой Словарь',
+          AppLocalizations.of(context)!.app_title,
           style: Theme.of(
             context,
           ).textTheme.titleLarge!.copyWith(color: Colors.white),
@@ -88,7 +100,7 @@ class MainPage extends StatelessWidget {
                 ),
               ),
               child: Text(
-                'Открыть словарь',
+                AppLocalizations.of(context)!.btn_open_dict,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ),
@@ -106,7 +118,7 @@ class MainPage extends StatelessWidget {
                 ),
               ),
               child: Text(
-                'Выучить слова',
+                AppLocalizations.of(context)!.btn_lean_words,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ),

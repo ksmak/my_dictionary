@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:my_dictionary/data/category.dart';
-import 'package:my_dictionary/ui/dictionary_item.dart';
+import 'package:my_dictionary/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
-import '/model.dart';
-import '/dbhelper.dart';
-import '../data/word.dart';
+import 'package:my_dictionary/data/category.dart';
+import 'package:my_dictionary/ui/dictionary_item.dart';
+import 'package:my_dictionary/model.dart';
+import 'package:my_dictionary/dbhelper.dart';
+import 'package:my_dictionary/data/word.dart';
 
 /// Экран для показа списка слов.
 ///
@@ -97,7 +98,9 @@ class DictionaryListPage extends StatelessWidget {
               },
             );
           } else {
-            return Center(child: Text('Нет данных'));
+            return Center(
+              child: Text(AppLocalizations.of(context)!.txt_no_data),
+            );
           }
         },
       ),
