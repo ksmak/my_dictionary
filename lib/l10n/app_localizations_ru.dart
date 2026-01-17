@@ -15,7 +15,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get btn_open_dict => 'Открыть словарь';
 
   @override
-  String get btn_lean_words => 'Выучить слова';
+  String get btn_lean_words => 'Учить слова';
 
   @override
   String get err_category_not_empty =>
@@ -106,4 +106,16 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get txt_leant => 'Выученных';
+
+  @override
+  String get btn_import => 'Импортировать данные';
+
+  @override
+  String get btn_export => 'Экспортировать данные';
+
+  @override
+  String get err_import => 'Ошибка! Неправильный формат данных.';
+
+  @override
+  String get btn_close => 'Закрыть';
 }

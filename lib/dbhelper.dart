@@ -290,38 +290,12 @@ class DBHelper {
   }
 
   /// Получает слово по наименованию
-  Future<Word?> getWordByName(String name) async {
+  Future<Word?> getWordByName(int categoryId, String name) async {
     final db = await this.db;
     final List<Map<String, dynamic>> maps = await db.query(
       'words',
-      where: 'name = ?',
-      whereArgs: [name],
-    );
-
-    if (maps.isNotEmpty) {
-      final category = await getCategoryById(maps[0]['category_id']);
-
-      return Word(
-        id: maps[0]['id'],
-        category: category!,
-        name: maps[0]['name'],
-        translation: maps[0]['translation'],
-        level: maps[0]['level'],
-        updateAt: maps[0]['update_at'],
-        createdAt: maps[0]['created_at'],
-      );
-    }
-
-    return null;
-  }
-
-  /// Получает слово по переводу
-  Future<Word?> getWordByTranslation(String translation) async {
-    final db = await this.db;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'words',
-      where: 'translation = ?',
-      whereArgs: [translation],
+      where: 'category_id = ? AND name = ?',
+      whereArgs: [categoryId, name],
     );
 
     if (maps.isNotEmpty) {

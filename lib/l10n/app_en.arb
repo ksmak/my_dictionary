@@ -1,7 +1,7 @@
 {
     "app_title": "My Dictionary",
-    "btn_open_dict": "Open Dictionary",
-    "btn_lean_words": "Learn Words",
+    "btn_open_dict": "Open dictionary",
+    "btn_lean_words": "Learn words",
     "err_category_not_empty": "Error! Category cannot be empty.",
     "err_category_exists": "Error! Category already exists in the dictionary.",
     "txt_delete_category": "Delete Category",
@@ -32,5 +32,9 @@
     "txt_level":"Level",
     "txt_count":"Count",
     "txt_today":"Today",
-    "txt_leant":"Learned"
+    "txt_leant":"Learned",
+    "btn_import":"Import data",
+    "btn_export":"Export data",
+    "err_import":"Error! Incorrect data format.",
+    "btn_close":"Close"
 }

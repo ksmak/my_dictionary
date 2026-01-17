@@ -90,6 +90,7 @@ class _DictionaryItemPageState extends State<DictionaryItemPage> {
 
     // Проверка на дубликаты слов
     Word? existWord = await DBHelper.instance.getWordByName(
+      widget.category.id,
       _wordController.text.trim().toLowerCase(),
     );
 

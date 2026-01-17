@@ -12,10 +12,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get app_title => 'My Dictionary';
 
   @override
-  String get btn_open_dict => 'Open Dictionary';
+  String get btn_open_dict => 'Open dictionary';
 
   @override
-  String get btn_lean_words => 'Learn Words';
+  String get btn_lean_words => 'Learn words';
 
   @override
   String get err_category_not_empty => 'Error! Category cannot be empty.';
@@ -106,4 +106,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get txt_leant => 'Learned';
+
+  @override
+  String get btn_import => 'Import data';
+
+  @override
+  String get btn_export => 'Export data';
+
+  @override
+  String get err_import => 'Error! Incorrect data format.';
+
+  @override
+  String get btn_close => 'Close';
 }

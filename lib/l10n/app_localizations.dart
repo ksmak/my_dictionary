@@ -107,13 +107,13 @@ abstract class AppLocalizations {
   /// No description provided for @btn_open_dict.
   ///
   /// In en, this message translates to:
-  /// **'Open Dictionary'**
+  /// **'Open dictionary'**
   String get btn_open_dict;
 
   /// No description provided for @btn_lean_words.
   ///
   /// In en, this message translates to:
-  /// **'Learn Words'**
+  /// **'Learn words'**
   String get btn_lean_words;
 
   /// No description provided for @err_category_not_empty.
@@ -289,6 +289,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Learned'**
   String get txt_leant;
+
+  /// No description provided for @btn_import.
+  ///
+  /// In en, this message translates to:
+  /// **'Import data'**
+  String get btn_import;
+
+  /// No description provided for @btn_export.
+  ///
+  /// In en, this message translates to:
+  /// **'Export data'**
+  String get btn_export;
+
+  /// No description provided for @err_import.
+  ///
+  /// In en, this message translates to:
+  /// **'Error! Incorrect data format.'**
+  String get err_import;
+
+  /// No description provided for @btn_close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get btn_close;
 }
 
 class _AppLocalizationsDelegate
